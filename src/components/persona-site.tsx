@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
 
 type Track = {
   id: string;
@@ -55,7 +55,7 @@ declare global {
   }
 }
 
-function makeSiteSafeScore(track: Track, contextRef: React.MutableRefObject<AudioContext | null>) {
+function makeSiteSafeScore(track: Track, contextRef: MutableRefObject<AudioContext | null>) {
   const AudioCtor = window.AudioContext || window.webkitAudioContext;
   if (!AudioCtor) return null;
 
