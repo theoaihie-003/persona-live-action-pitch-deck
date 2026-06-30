@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
 
 type Track = {
   id: string;
@@ -6,7 +6,12 @@ type Track = {
   arc: string;
   era: string;
   palette: string;
-  youtubeId: string;
+  youtubeIds: string[];
+  fallbackScore: {
+    bpm: number;
+    wave: OscillatorType;
+    notes: number[];
+  };
 };
 
 // NOTE: YouTube IDs point to widely-circulated official uploads of the
@@ -19,7 +24,8 @@ const TRACKS: Track[] = [
     arc: "Arc I · Persona 3 Reload",
     era: "Midnight Hour",
     palette: "from-[#0B1733] via-[#152a55] to-[#0B1733]",
-    youtubeId: "s5JfQTuVUDk",
+    youtubeIds: ["s5JfQTuVUDk", "8Yec-3UfWII", "8r6hM1XxYl4"],
+    fallbackScore: { bpm: 112, wave: "triangle", notes: [196, 247, 294, 330, 247, 294, 370, 330] },
   },
   {
     id: "primetime",
@@ -27,7 +33,8 @@ const TRACKS: Track[] = [
     arc: "Arc II · Persona 4 Golden",
     era: "Midnight Channel",
     palette: "from-[#3a2f00] via-[#8a6b00] to-[#1a1500]",
-    youtubeId: "iEd5JtP4F8I",
+    youtubeIds: ["iEd5JtP4F8I", "YK9Y1EqjDpY", "W6q1AWnjNiU"],
+    fallbackScore: { bpm: 126, wave: "square", notes: [220, 277, 330, 370, 415, 370, 330, 277] },
   },
   {
     id: "ylwc",
@@ -35,7 +42,8 @@ const TRACKS: Track[] = [
     arc: "Arc III · Persona 5 Royal",
     era: "Phantom Thieves",
     palette: "from-[#3a0008] via-[#8b0a1a] to-[#0a0000]",
-    youtubeId: "BvVQjEcfvBg",
+    youtubeIds: ["BvVQjEcfvBg", "CGwH6rZk7VM", "7LqTCYxFMlU"],
+    fallbackScore: { bpm: 132, wave: "sawtooth", notes: [165, 196, 247, 294, 330, 294, 247, 196] },
   },
 ];
 
@@ -43,7 +51,63 @@ declare global {
   interface Window {
     YT?: any;
     onYouTubeIframeAPIReady?: () => void;
+    webkitAudioContext?: typeof AudioContext;
   }
+}
+
+function makeSiteSafeScore(track: Track, contextRef: MutableRefObject<AudioContext | null>) {
+  const AudioCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtor) return null;
+
+  const context = contextRef.current ?? new AudioCtor();
+  contextRef.current = context;
+  context.resume?.();
+
+  const master = context.createGain();
+  const filter = context.createBiquadFilter();
+  master.gain.value = 0.055;
+  filter.type = "lowpass";
+  filter.frequency.value = 1600;
+  master.connect(filter);
+  filter.connect(context.destination);
+
+  const beat = 60 / track.fallbackScore.bpm;
+  let step = 0;
+
+  const playNote = () => {
+    const now = context.currentTime;
+    const note = track.fallbackScore.notes[step % track.fallbackScore.notes.length];
+    const bass = context.createOscillator();
+    const lead = context.createOscillator();
+    const gain = context.createGain();
+
+    bass.type = "sine";
+    bass.frequency.setValueAtTime(note / 2, now);
+    lead.type = track.fallbackScore.wave;
+    lead.frequency.setValueAtTime(note, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.16, now + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + beat * 0.82);
+
+    bass.connect(gain);
+    lead.connect(gain);
+    gain.connect(master);
+    bass.start(now);
+    lead.start(now);
+    bass.stop(now + beat * 0.9);
+    lead.stop(now + beat * 0.9);
+    step += 1;
+  };
+
+  playNote();
+  const interval = window.setInterval(playNote, beat * 1000);
+
+  return () => {
+    window.clearInterval(interval);
+    const now = context.currentTime;
+    master.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+    window.setTimeout(() => master.disconnect(), 160);
+  };
 }
 
 function useYouTubePlayer(onReady: () => void) {
@@ -88,31 +152,78 @@ function useYouTubePlayer(onReady: () => void) {
 function MusicPlayer() {
   const [ready, setReady] = useState(false);
   const [index, setIndex] = useState(0);
+  const [variant, setVariant] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [usingBackupScore, setUsingBackupScore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { playerRef, containerId } = useYouTubePlayer(() => setReady(true));
+  const indexRef = useRef(0);
+  const variantRef = useRef(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const stopScoreRef = useRef<(() => void) | null>(null);
+  const loadRef = useRef<(i: number, autoplay: boolean, v?: number) => void>(() => {});
 
   const current = TRACKS[index];
+  const currentYouTubeId = current.youtubeIds[variant] ?? current.youtubeIds[0];
 
-  const load = (i: number, autoplay: boolean) => {
+  const stopSiteScore = () => {
+    stopScoreRef.current?.();
+    stopScoreRef.current = null;
+    setUsingBackupScore(false);
+  };
+
+  const startSiteScore = (track: Track) => {
+    stopScoreRef.current?.();
+    const stop = makeSiteSafeScore(track, audioContextRef);
+    stopScoreRef.current = stop;
+    setUsingBackupScore(Boolean(stop));
+  };
+
+  const load = (i: number, autoplay: boolean, v = 0) => {
     if (!playerRef.current?.loadVideoById) return;
     const t = TRACKS[i];
+    const youtubeId = t.youtubeIds[v] ?? t.youtubeIds[0];
+    stopSiteScore();
+    setVariant(v);
     setError(null);
-    if (autoplay) playerRef.current.loadVideoById(t.youtubeId);
-    else playerRef.current.cueVideoById(t.youtubeId);
+    if (autoplay) playerRef.current.loadVideoById(youtubeId);
+    else playerRef.current.cueVideoById(youtubeId);
   };
+
+  useEffect(() => {
+    indexRef.current = index;
+    variantRef.current = variant;
+    loadRef.current = load;
+  });
+
+  useEffect(() => () => stopSiteScore(), []);
 
   // Wire up error + ended events once the player is ready.
   useEffect(() => {
     if (!ready || !playerRef.current?.addEventListener) return;
     const onErr = () => {
-      setError("This video can't be played here (region-blocked or embedding disabled). Use the YouTube link →");
-      setPlaying(false);
+      const trackIndex = indexRef.current;
+      const track = TRACKS[trackIndex];
+      const nextVariant = variantRef.current + 1;
+
+      if (nextVariant < track.youtubeIds.length) {
+        setError("That YouTube embed is blocked here — trying another upload…");
+        loadRef.current(trackIndex, true, nextVariant);
+        return;
+      }
+
+      startSiteScore(track);
+      setError("Official embeds are blocked here, so playing a site-safe backup score. Use YouTube for the exact track →");
+      setPlaying(true);
     };
     const onState = (e: any) => {
       // 0 = ended, 1 = playing, 2 = paused
       if (e.data === 0) setPlaying(false);
-      if (e.data === 1) setPlaying(true);
+      if (e.data === 1) {
+        stopSiteScore();
+        setError(null);
+        setPlaying(true);
+      }
       if (e.data === 2) setPlaying(false);
     };
     playerRef.current.addEventListener("onError", onErr);
@@ -122,10 +233,16 @@ function MusicPlayer() {
   const play = () => {
     if (!ready) return;
     if (!playing) {
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtor) {
+        audioContextRef.current = audioContextRef.current ?? new AudioCtor();
+        audioContextRef.current.resume?.();
+      }
       load(index, true);
       setPlaying(true);
     } else {
       playerRef.current?.pauseVideo?.();
+      stopSiteScore();
       setPlaying(false);
     }
   };
@@ -168,7 +285,13 @@ function MusicPlayer() {
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold text-white">{current.title}</div>
             <div className="truncate text-xs text-white/60">
-              {error ? <span className="text-amber-300">{error}</span> : `${current.arc} · ${current.era}`}
+              {error ? (
+                <span className="text-amber-300">{error}</span>
+              ) : usingBackupScore ? (
+                <span className="text-amber-300">Playing backup score · exact track on YouTube →</span>
+              ) : (
+                `${current.arc} · ${current.era}`
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -200,7 +323,7 @@ function MusicPlayer() {
             </button>
           </div>
           <a
-            href={`https://www.youtube.com/watch?v=${current.youtubeId}`}
+            href={`https://www.youtube.com/watch?v=${currentYouTubeId}`}
             target="_blank"
             rel="noreferrer"
             className="hidden rounded-full border border-white/20 px-3 py-1 text-xs text-white/80 hover:bg-white/10 sm:inline-block"
