@@ -33,7 +33,7 @@ const TRACKS: Track[] = [
     arc: "Arc II · Persona 4 Golden",
     era: "Midnight Channel",
     palette: "from-[#3a2f00] via-[#8a6b00] to-[#1a1500]",
-    youtubeIds: ["iEd5JtP4F8I", "YK9Y1EqjDpY", "W6q1AWnjNiU"],
+    youtubeIds: ["XRa9wZcHhA8", "iEd5JtP4F8I", "YK9Y1EqjDpY", "W6q1AWnjNiU"],
     fallbackScore: { bpm: 126, wave: "square", notes: [220, 277, 330, 370, 415, 370, 330, 277] },
   },
   {
