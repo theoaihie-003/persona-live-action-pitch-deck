@@ -77,14 +77,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "PersonaLA" },
+      { name: "description", content: "Across three Japanese towns, teenagers live double lives:
+
+by day: school, friendship, romance, identity crises
+by night: entering psychological worlds where th" },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "PersonaLA" },
+      { property: "og:description", content: "Across three Japanese towns, teenagers live double lives:
+
+by day: school, friendship, romance, identity crises
+by night: entering psychological worlds where th" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "PersonaLA" },
+      { name: "twitter:description", content: "Across three Japanese towns, teenagers live double lives:
+
+by day: school, friendship, romance, identity crises
+by night: entering psychological worlds where th" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/ZPtO8f28FhMIzJRVxT8TTGKGNTf2/social-images/social-1782850892088-PerosnaLA.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/ZPtO8f28FhMIzJRVxT8TTGKGNTf2/social-images/social-1782850892088-PerosnaLA.webp" },
     ],
     links: [
       {
