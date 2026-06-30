@@ -55,8 +55,8 @@ function useYouTubePlayer(onReady: () => void) {
     const init = () => {
       if (cancelled) return;
       playerRef.current = new window.YT.Player(containerId, {
-        height: "0",
-        width: "0",
+        height: "120",
+        width: "200",
         playerVars: { autoplay: 0, controls: 0, modestbranding: 1, playsinline: 1 },
         events: { onReady: () => onReady() },
       });
@@ -89,6 +89,7 @@ function MusicPlayer() {
   const [ready, setReady] = useState(false);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { playerRef, containerId } = useYouTubePlayer(() => setReady(true));
 
   const current = TRACKS[index];
@@ -96,9 +97,27 @@ function MusicPlayer() {
   const load = (i: number, autoplay: boolean) => {
     if (!playerRef.current?.loadVideoById) return;
     const t = TRACKS[i];
+    setError(null);
     if (autoplay) playerRef.current.loadVideoById(t.youtubeId);
     else playerRef.current.cueVideoById(t.youtubeId);
   };
+
+  // Wire up error + ended events once the player is ready.
+  useEffect(() => {
+    if (!ready || !playerRef.current?.addEventListener) return;
+    const onErr = () => {
+      setError("This video can't be played here (region-blocked or embedding disabled). Use the YouTube link →");
+      setPlaying(false);
+    };
+    const onState = (e: any) => {
+      // 0 = ended, 1 = playing, 2 = paused
+      if (e.data === 0) setPlaying(false);
+      if (e.data === 1) setPlaying(true);
+      if (e.data === 2) setPlaying(false);
+    };
+    playerRef.current.addEventListener("onError", onErr);
+    playerRef.current.addEventListener("onStateChange", onState);
+  }, [ready, playerRef]);
 
   const play = () => {
     if (!ready) return;
@@ -125,13 +144,32 @@ function MusicPlayer() {
 
   return (
     <>
-      <div id={containerId} style={{ position: "fixed", left: -9999, top: -9999 }} />
+      {/* Player must render with real pixels for YouTube to allow playback,
+          but we tuck it into a corner so it stays unobtrusive. */}
+      <div
+        style={{
+          position: "fixed",
+          right: 8,
+          bottom: 80,
+          width: 200,
+          height: 120,
+          zIndex: 40,
+          overflow: "hidden",
+          borderRadius: 8,
+          opacity: 0.001,
+          pointerEvents: "none",
+        }}
+      >
+        <div id={containerId} />
+      </div>
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-black/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
           <div className={`hidden h-12 w-12 shrink-0 rounded-md bg-gradient-to-br ${current.palette} sm:block`} />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold text-white">{current.title}</div>
-            <div className="truncate text-xs text-white/60">{current.arc} · {current.era}</div>
+            <div className="truncate text-xs text-white/60">
+              {error ? <span className="text-amber-300">{error}</span> : `${current.arc} · ${current.era}`}
+            </div>
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -161,6 +199,14 @@ function MusicPlayer() {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>
             </button>
           </div>
+          <a
+            href={`https://www.youtube.com/watch?v=${current.youtubeId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="hidden rounded-full border border-white/20 px-3 py-1 text-xs text-white/80 hover:bg-white/10 sm:inline-block"
+          >
+            YouTube ↗
+          </a>
           <div className="hidden gap-1 md:flex">
             {TRACKS.map((t, i) => (
               <button
