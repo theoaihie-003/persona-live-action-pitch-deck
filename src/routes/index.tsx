@@ -1,29 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PersonaSite } from "@/components/persona-site";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "PERSONA — A Netflix Original Series Pitch" },
+      {
+        name: "description",
+        content:
+          "Every mask protects you… until it becomes you. A six-season cinematic adaptation of the Persona saga.",
+      },
+      { property: "og:title", content: "PERSONA — Netflix Original Series Pitch" },
+      {
+        property: "og:description",
+        content: "Six seasons. Three masks. One question: who are you, really?",
+      },
     ],
   }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
+  return <PersonaSite />;
 }
