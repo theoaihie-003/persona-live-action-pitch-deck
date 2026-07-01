@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
+import { Link } from "@tanstack/react-router";
+import { SEASONS } from "@/lib/seasons-data";
 
 type Track = {
   id: string;
