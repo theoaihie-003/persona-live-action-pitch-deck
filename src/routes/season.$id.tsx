@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { getSeason, SEASONS } from "@/lib/seasons-data";
+import { getSeason, SEASONS, type SeasonData } from "@/lib/seasons-data";
 
 export const Route = createFileRoute("/season/$id")({
   head: ({ params }) => {
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/season/$id")({
 });
 
 function SeasonPage() {
-  const { season: s } = Route.useLoaderData();
+  const { season: s } = Route.useLoaderData() as { season: SeasonData };
   const prev = SEASONS.find((x) => x.number === s.number - 1);
   const next = SEASONS.find((x) => x.number === s.number + 1);
 
