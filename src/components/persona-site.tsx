@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
+import { Link } from "@tanstack/react-router";
+import { SEASONS } from "@/lib/seasons-data";
 
 type Track = {
   id: string;
@@ -554,10 +556,56 @@ export function PersonaSite() {
     <div className="min-h-screen bg-black text-white antialiased">
       <Hero />
       <Arcs />
+      <SeasonsGrid />
       <WorldRules />
       <Deck />
       <Footer />
       <MusicPlayer />
     </div>
+  );
+}
+
+function SeasonsGrid() {
+  return (
+    <section id="seasons" className="bg-neutral-950 py-24">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="text-xs font-medium uppercase tracking-[0.4em] text-white/50">
+          Season Bibles
+        </div>
+        <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-5xl">
+          Six seasons. Deep dives.
+        </h2>
+        <p className="mt-4 max-w-2xl text-sm text-white/70">
+          Themes, locations, Persona evolutions, casting, fandom hooks, and the Netflix
+          platform play — one page per season.
+        </p>
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {SEASONS.map((s) => (
+            <Link
+              key={s.id}
+              to="/season/$id"
+              params={{ id: s.id }}
+              className="group relative overflow-hidden rounded-xl border border-white/10 p-6 transition hover:-translate-y-1 hover:border-white/30"
+              style={{
+                background: `linear-gradient(135deg, ${s.palette.from} 0%, ${s.palette.to} 100%)`,
+              }}
+            >
+              <div className="text-[80px] font-black leading-none text-white/10">
+                {String(s.number).padStart(2, "0")}
+              </div>
+              <div className="mt-[-20px] text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: s.palette.accent }}>
+                Season {s.number}
+              </div>
+              <h3 className="mt-2 text-xl font-bold text-white">{s.title}</h3>
+              <div className="mt-1 text-xs text-white/60">{s.arc}</div>
+              <p className="mt-4 text-sm leading-relaxed text-white/80 line-clamp-3">{s.logline}</p>
+              <div className="mt-5 text-xs font-semibold text-white/80 group-hover:text-white">
+                Open season bible →
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
